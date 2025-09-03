@@ -11,6 +11,126 @@ const aiModerationService = require('../services/aiModerationService');
 
 // 🎯 FLAGSHIP ROUTES - Anonymous Live Audio Sanctuary
 
+// ================== LIVE SESSION CREATION ==================
+
+// Create instant live session
+router.post('/create', authMiddleware, async (req, res) => {
+  try {
+    const {
+      topic,
+      description,
+      emoji,
+      maxParticipants = 50,
+      allowAnonymous = true,
+      moderationEnabled = true,
+      recordingEnabled = false,
+      accessType = 'public',
+      tags = [],
+      category = 'support',
+      duration = 60, // minutes
+      isScheduled = false
+    } = req.body;
+
+    console.log('🎙️ Creating live session:', { 
+      topic, 
+      isScheduled,
+      hostId: req.user.id 
+    });
+
+    // Validate required fields
+    if (!topic) {
+      return res.error('Topic is required', 400);
+    }
+
+    // Generate unique identifiers
+    const sessionId = `live-${nanoid(8)}`;
+    const channelName = `sanctuary_${sessionId}`;
+    const sessionDuration = duration * 60; // convert to seconds
+
+    // Generate Agora tokens
+    let agoraToken, hostToken;
+    try {
+      agoraToken = generateRtcToken(channelName, 0, 'subscriber', sessionDuration);
+      hostToken = generateRtcToken(channelName, req.user.id, 'publisher', sessionDuration);
+    } catch (agoraError) {
+      console.warn('⚠️ Agora token generation failed:', agoraError.message);
+      agoraToken = `temp_token_${nanoid(16)}`;
+      hostToken = `temp_host_token_${nanoid(16)}`;
+    }
+
+    // Create live session
+    const liveSession = new LiveSanctuarySession({
+      id: sessionId,
+      topic: topic.trim(),
+      description: description?.trim(),
+      emoji: emoji || '🎙️',
+      hostId: req.user.id,
+      hostAlias: req.user.alias || `Host_${nanoid(4)}`,
+      hostToken,
+      agoraChannelName: channelName,
+      agoraToken,
+      maxParticipants,
+      allowAnonymous,
+      moderationEnabled,
+      emergencyContactEnabled: true,
+      recordingEnabled,
+      expiresAt: new Date(Date.now() + (sessionDuration * 1000)),
+      participants: [{
+        id: req.user.id,
+        alias: req.user.alias || `Host_${nanoid(4)}`,
+        isHost: true,
+        isModerator: true,
+        joinedAt: new Date(),
+        avatarIndex: req.user.avatarIndex || 1
+      }],
+      status: 'active',
+      isActive: true,
+      startTime: new Date(),
+      accessType,
+      tags,
+      category
+    });
+
+    await liveSession.save();
+
+    // Cache session data in Redis for quick access
+    await redisService.setSessionState(sessionId, {
+      type: 'live',
+      topic,
+      hostId: req.user.id,
+      participants: liveSession.participants,
+      status: 'active'
+    }, sessionDuration);
+
+    console.log('✅ Live session created:', {
+      sessionId,
+      channelName
+    });
+
+    res.success({
+      session: {
+        id: liveSession.id,
+        topic: liveSession.topic,
+        description: liveSession.description,
+        emoji: liveSession.emoji,
+        hostAlias: liveSession.hostAlias,
+        agoraChannelName: liveSession.agoraChannelName,
+        agoraToken: liveSession.agoraToken,
+        hostToken: liveSession.hostToken,
+        maxParticipants: liveSession.maxParticipants,
+        participants: liveSession.participants,
+        status: liveSession.status,
+        accessType: liveSession.accessType,
+        expiresAt: liveSession.expiresAt
+      }
+    }, 'Live session created successfully');
+
+  } catch (error) {
+    console.error('❌ Live session creation error:', error);
+    res.error('Failed to create live session: ' + error.message, 500);
+  }
+});
+
 // ================== SCHEDULING SYSTEM ==================
 
 // Create scheduled session

@@ -166,10 +166,12 @@ const CreateSanctuary: React.FC = () => {
           allowAnonymous: true
         };
         
+        // Use the FlagshipSanctuaryApi for proper authentication
         const response = await fetch('/api/flagship-sanctuary/create', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
           body: JSON.stringify(flagshipSanctuaryData)
         }).then(res => res.json());
@@ -456,18 +458,43 @@ const CreateSanctuary: React.FC = () => {
                 name="scheduledTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Schedule Time</FormLabel>
+                    <FormLabel className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-accent" />
+                      Schedule Time
+                    </FormLabel>
                     <FormControl>
-                      <input
-                        type="datetime-local"
-                        value={field.value ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000).toISOString().slice(0, -1) : ''}
-                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        min={new Date().toISOString().slice(0, -1)}
-                      />
+                      <div className="relative">
+                        <input
+                          type="datetime-local"
+                          value={field.value ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000).toISOString().slice(0, -1) : ''}
+                          onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                          className="flex h-12 w-full rounded-lg border border-border/50 bg-background/50 px-4 py-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, -1)}
+                        />
+                      </div>
                     </FormControl>
+                    {field.value && (
+                      <div className="text-sm text-muted-foreground mt-2 p-3 bg-accent/10 rounded-lg border border-accent/20">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-accent" />
+                          <span className="font-medium">Scheduled for:</span> 
+                        </div>
+                        <div className="text-foreground font-medium mt-1">
+                          {new Date(field.value).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })} at {new Date(field.value).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <FormDescription>
-                      Select when this live audio session should start.
+                      Select when this live audio session should start (minimum 5 minutes from now).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
