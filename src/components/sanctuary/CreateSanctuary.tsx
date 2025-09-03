@@ -17,6 +17,7 @@ import { ApiSanctuaryCreateRequest } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useSanctuaryManager } from '@/hooks/useSanctuaryManager';
+import { tokenManager } from '@/services/tokenManager';
 
 // Define form schema
 const formSchema = z.object({
@@ -171,7 +172,7 @@ const CreateSanctuary: React.FC = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            ...tokenManager.getAuthHeaders(),
           },
           body: JSON.stringify(flagshipSanctuaryData)
         }).then(res => res.json());

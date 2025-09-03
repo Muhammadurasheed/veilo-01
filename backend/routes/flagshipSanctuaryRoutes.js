@@ -14,7 +14,7 @@ const aiModerationService = require('../services/aiModerationService');
 // ================== LIVE SESSION CREATION ==================
 
 // Create instant live session
-router.post('/create', authMiddleware, async (req, res) => {
+router.post('/create', optionalAuthMiddleware, async (req, res) => {
   try {
     const {
       topic,
